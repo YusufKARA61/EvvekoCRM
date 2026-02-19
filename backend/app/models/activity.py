@@ -25,7 +25,7 @@ class CRMActivity(Base):
     activity_type: Mapped[str] = mapped_column(String(50), nullable=False)
     title: Mapped[Optional[str]] = mapped_column(String(200))
     description: Mapped[Optional[str]] = mapped_column(Text)
-    metadata: Mapped[Optional[dict]] = mapped_column(JSONB)
+    extra_data: Mapped[Optional[dict]] = mapped_column("metadata", JSONB)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False

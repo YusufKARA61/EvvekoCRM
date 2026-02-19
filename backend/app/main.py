@@ -1,3 +1,4 @@
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -9,14 +10,13 @@ from app.api.v1 import api_router
 
 settings = get_settings()
 
+# Uploads klasorunu uygulama baslamadan once olustur
+os.makedirs(settings.upload_dir, exist_ok=True)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
-    import os
-    os.makedirs(settings.upload_dir, exist_ok=True)
     yield
-    # Shutdown
 
 
 app = FastAPI(

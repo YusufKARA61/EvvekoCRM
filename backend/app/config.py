@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     debug: bool = False
 
     # Database
-    database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5433/evvekocrm_db"
+    database_url: str = "postgresql+asyncpg://yusufkara@localhost:5432/evvekocrm_db"
 
     # Redis
     redis_url: str = "redis://localhost:6380/0"

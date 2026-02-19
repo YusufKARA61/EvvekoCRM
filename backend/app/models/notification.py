@@ -24,7 +24,7 @@ class CRMNotification(Base):
     is_read: Mapped[bool] = mapped_column(Boolean, default=False)
     read_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
-    metadata: Mapped[Optional[dict]] = mapped_column(JSONB)
+    extra_data: Mapped[Optional[dict]] = mapped_column("metadata", JSONB)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False
