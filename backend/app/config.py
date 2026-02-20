@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     # Yevveko Integration
     yevveko_api_url: str = "https://evveko.com/api/v1"
     yevveko_crm_api_key: str = ""
+    yevveko_database_url: str = "postgresql+asyncpg://postgres:v20.y85*B82@localhost:5432/evveko_db"
 
     # SMS (NetGSM)
     netgsm_usercode: str = ""

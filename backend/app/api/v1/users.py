@@ -12,6 +12,16 @@ from app.utils.permissions import Permission
 router = APIRouter()
 
 
+@router.get("/roles", response_model=list)
+async def list_roles(
+    db: AsyncSession = Depends(get_db),
+    current_user: CRMUser = Depends(get_current_user),
+):
+    result = await db.execute(select(CRMRole).order_by(CRMRole.id))
+    roles = result.scalars().all()
+    return [{"id": r.id, "name": r.name, "display_name": r.display_name} for r in roles]
+
+
 @router.get("", response_model=list[UserResponse])
 async def list_users(
     db: AsyncSession = Depends(get_db),

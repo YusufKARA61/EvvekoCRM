@@ -41,6 +41,7 @@ export interface Lead {
   karar_verici: string | null;
   whatsapp_grubu_var: boolean | null;
   niyet: string | null;
+  ek_notlar: string | null;
   lead_sinif: string | null;
   toplanti_uygunluk_skoru: number;
   status: string;

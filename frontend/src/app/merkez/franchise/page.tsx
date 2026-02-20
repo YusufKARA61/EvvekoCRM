@@ -19,17 +19,100 @@ interface FranchiseOffice {
   created_at: string;
 }
 
+const ISTANBUL_ILCELER = [
+  "Adalar", "Arnavutkoy", "Atasehir", "Avcilar", "Bagcilar", "Bahcelievler",
+  "Bakirkoy", "Basaksehir", "Bayrampasa", "Besiktas", "Beykoz", "Beylikduzu",
+  "Beyoglu", "Buyukcekmece", "Catalca", "Cekmekoy", "Esenler", "Esenyurt",
+  "Eyupsultan", "Fatih", "Gaziosmanpasa", "Gungoren", "Kadikoy", "Kagithane",
+  "Kartal", "Kucukcekmece", "Maltepe", "Pendik", "Sancaktepe", "Sarıyer",
+  "Silivri", "Sultanbeyli", "Sultangazi", "Sile", "Sisli", "Tuzla",
+  "Umraniye", "Uskudar", "Zeytinburnu",
+];
+
 export default function FranchisePage() {
   const [offices, setOffices] = useState<FranchiseOffice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
-  useEffect(() => {
+  const [form, setForm] = useState({
+    name: "",
+    code: "",
+    il: "Istanbul",
+    ilce: "",
+    address: "",
+    phone: "",
+    email: "",
+    territory_ilceler: [] as string[],
+    contract_start_date: "",
+    contract_end_date: "",
+  });
+
+  const fetchOffices = () => {
     api
       .get("/franchise")
       .then((res) => setOffices(res.data))
       .catch((err) => console.error("Bayi veri hatasi:", err))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchOffices();
   }, []);
+
+  const openModal = () => {
+    setError("");
+    setForm({
+      name: "",
+      code: "",
+      il: "Istanbul",
+      ilce: "",
+      address: "",
+      phone: "",
+      email: "",
+      territory_ilceler: [],
+      contract_start_date: "",
+      contract_end_date: "",
+    });
+    setShowModal(true);
+  };
+
+  const handleTerritoryToggle = (ilce: string) => {
+    setForm((prev) => ({
+      ...prev,
+      territory_ilceler: prev.territory_ilceler.includes(ilce)
+        ? prev.territory_ilceler.filter((i) => i !== ilce)
+        : [...prev.territory_ilceler, ilce],
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError("");
+
+    try {
+      await api.post("/franchise", {
+        name: form.name,
+        code: form.code,
+        il: form.il,
+        ilce: form.ilce,
+        address: form.address || null,
+        phone: form.phone || null,
+        email: form.email || null,
+        territory_ilceler: form.territory_ilceler,
+        contract_start_date: form.contract_start_date || null,
+        contract_end_date: form.contract_end_date || null,
+      });
+      setShowModal(false);
+      fetchOffices();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Bayi eklenemedi");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -46,7 +129,10 @@ export default function FranchisePage() {
           <h1 className="text-2xl font-bold text-gray-900">Bayiler</h1>
           <p className="text-gray-500">Franchise ofislerini yonetin</p>
         </div>
-        <button className="rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-primary-700">
+        <button
+          onClick={openModal}
+          className="rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-primary-700"
+        >
           + Yeni Bayi Ekle
         </button>
       </div>
@@ -115,6 +201,185 @@ export default function FranchisePage() {
           ))
         )}
       </div>
+
+      {/* Yeni Bayi Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="mx-4 w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">Yeni Bayi Ekle</h2>
+              <button
+                onClick={() => setShowModal(false)}
+                className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {error && (
+              <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Ofis Adi *</label>
+                  <input
+                    type="text"
+                    required
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    placeholder="Evveko Kadikoy Ofisi"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Ofis Kodu *</label>
+                  <input
+                    type="text"
+                    required
+                    value={form.code}
+                    onChange={(e) => setForm({ ...form, code: e.target.value })}
+                    placeholder="FO-IST-01"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Il *</label>
+                  <input
+                    type="text"
+                    required
+                    value={form.il}
+                    onChange={(e) => setForm({ ...form, il: e.target.value })}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Ilce *</label>
+                  <select
+                    required
+                    value={form.ilce}
+                    onChange={(e) => setForm({ ...form, ilce: e.target.value })}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  >
+                    <option value="">Ilce secin</option>
+                    {ISTANBUL_ILCELER.map((ilce) => (
+                      <option key={ilce} value={ilce}>{ilce}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Adres</label>
+                <input
+                  type="text"
+                  value={form.address}
+                  onChange={(e) => setForm({ ...form, address: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Telefon</label>
+                  <input
+                    type="text"
+                    value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    placeholder="0216 XXX XX XX"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Email</label>
+                  <input
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Sozlesme Baslangic</label>
+                  <input
+                    type="date"
+                    value={form.contract_start_date}
+                    onChange={(e) => setForm({ ...form, contract_start_date: e.target.value })}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Sozlesme Bitis</label>
+                  <input
+                    type="date"
+                    value={form.contract_end_date}
+                    onChange={(e) => setForm({ ...form, contract_end_date: e.target.value })}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Bolge (Ilceler)
+                </label>
+                <p className="mb-2 text-xs text-gray-500">Ofis&apos;in sorumluluk bolgesindeki ilceleri secin</p>
+                <div className="flex flex-wrap gap-1.5 rounded-lg border border-gray-200 p-3 max-h-40 overflow-y-auto">
+                  {ISTANBUL_ILCELER.map((ilce) => (
+                    <label
+                      key={ilce}
+                      className={`cursor-pointer rounded-md border px-2.5 py-1 text-xs transition ${
+                        form.territory_ilceler.includes(ilce)
+                          ? "border-primary-500 bg-primary-50 text-primary-700"
+                          : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        className="hidden"
+                        checked={form.territory_ilceler.includes(ilce)}
+                        onChange={() => handleTerritoryToggle(ilce)}
+                      />
+                      {ilce}
+                    </label>
+                  ))}
+                </div>
+                {form.territory_ilceler.length > 0 && (
+                  <p className="mt-1 text-xs text-primary-600">
+                    {form.territory_ilceler.length} ilce secildi
+                  </p>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Iptal
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+                >
+                  {saving ? "Kaydediliyor..." : "Bayi Ekle"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

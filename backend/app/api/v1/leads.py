@@ -94,7 +94,7 @@ async def create_lead(
     lead = CRMLead(**request.model_dump())
 
     # SLA deadline (varsayilan 30dk)
-    lead.ilk_arama_deadline = datetime.now(timezone.utc) + timedelta(minutes=30)
+    lead.ilk_arama_deadline = datetime.now() + timedelta(minutes=30)
 
     db.add(lead)
     await db.flush()
@@ -163,7 +163,7 @@ async def update_lead(
 
         # Kapanis kontrolu
         if new_status in ("kapanis_basarili", "kapanis_basarisiz", "iptal", "sahte_bos"):
-            lead.closed_at = datetime.now(timezone.utc)
+            lead.closed_at = datetime.now()
 
     await db.flush()
     await db.refresh(lead)
@@ -193,7 +193,7 @@ async def update_lead_status(
         lead.sub_status = request.sub_status
 
     if request.status in ("kapanis_basarili", "kapanis_basarisiz", "iptal", "sahte_bos"):
-        lead.closed_at = datetime.now(timezone.utc)
+        lead.closed_at = datetime.now()
 
     db.add(CRMActivity(
         lead_id=lead.id,

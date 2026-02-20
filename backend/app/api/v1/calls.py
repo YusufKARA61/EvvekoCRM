@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -51,15 +51,22 @@ async def create_call_log(
     if not lead:
         raise HTTPException(status_code=404, detail="Lead bulunamadi")
 
+    data = request.model_dump()
+    # Timezone bilgisini kaldir (DB TIMESTAMP WITHOUT TIME ZONE kullaniyor)
+    if data.get("started_at") and data["started_at"].tzinfo:
+        data["started_at"] = data["started_at"].replace(tzinfo=None)
+    if data.get("ended_at") and data["ended_at"] and data["ended_at"].tzinfo:
+        data["ended_at"] = data["ended_at"].replace(tzinfo=None)
+
     call_log = CRMCallLog(
-        **request.model_dump(),
+        **data,
         caller_id=current_user.id,
     )
     db.add(call_log)
 
     # Ilk arama ise lead'i guncelle
     if request.call_type == "ilk_arama" and request.result_code == "baglanti_kuruldu":
-        lead.ilk_arama_yapildi_at = datetime.now(timezone.utc)
+        lead.ilk_arama_yapildi_at = datetime.now()
         if lead.status == "talep_geldi":
             lead.status = "merkez_arandi"
 

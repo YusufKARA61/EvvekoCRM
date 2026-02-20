@@ -3,6 +3,12 @@
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
 
+interface Role {
+  id: number;
+  name: string;
+  display_name: string;
+}
+
 interface User {
   id: number;
   email: string;
@@ -10,23 +16,100 @@ interface User {
   last_name: string;
   phone: string | null;
   is_active: boolean;
-  roles: { id: number; name: string; display_name: string }[];
+  roles: Role[];
   franchise_office_id: number | null;
   last_login_at: string | null;
   created_at: string;
 }
 
+interface FranchiseOffice {
+  id: number;
+  name: string;
+  code: string;
+}
+
 export default function TeamPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [offices, setOffices] = useState<FranchiseOffice[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
-  useEffect(() => {
+  const [form, setForm] = useState({
+    email: "",
+    password: "",
+    first_name: "",
+    last_name: "",
+    phone: "",
+    role_ids: [] as number[],
+    franchise_office_id: null as number | null,
+  });
+
+  const fetchUsers = () => {
     api
       .get("/users")
       .then((res) => setUsers(res.data))
       .catch((err) => console.error("Ekip veri hatasi:", err))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchUsers();
   }, []);
+
+  const openModal = async () => {
+    setError("");
+    setForm({
+      email: "",
+      password: "",
+      first_name: "",
+      last_name: "",
+      phone: "",
+      role_ids: [],
+      franchise_office_id: null,
+    });
+    try {
+      const [rolesRes, officesRes] = await Promise.all([
+        api.get("/users/roles"),
+        api.get("/franchise"),
+      ]);
+      setRoles(rolesRes.data);
+      setOffices(officesRes.data);
+    } catch (err) {
+      console.error("Veri yuklenemedi:", err);
+    }
+    setShowModal(true);
+  };
+
+  const handleRoleToggle = (roleId: number) => {
+    setForm((prev) => ({
+      ...prev,
+      role_ids: prev.role_ids.includes(roleId)
+        ? prev.role_ids.filter((id) => id !== roleId)
+        : [...prev.role_ids, roleId],
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError("");
+
+    try {
+      await api.post("/users", {
+        ...form,
+        franchise_office_id: form.franchise_office_id || null,
+      });
+      setShowModal(false);
+      fetchUsers();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Kullanici eklenemedi");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -43,7 +126,10 @@ export default function TeamPage() {
           <h1 className="text-2xl font-bold text-gray-900">Ekip Yonetimi</h1>
           <p className="text-gray-500">Kullanicilari ve rolleri yonetin</p>
         </div>
-        <button className="rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-primary-700">
+        <button
+          onClick={openModal}
+          className="rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-primary-700"
+        >
           + Yeni Kullanici
         </button>
       </div>
@@ -118,6 +204,149 @@ export default function TeamPage() {
           </table>
         </div>
       </div>
+
+      {/* Yeni Kullanici Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="mx-4 w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">Yeni Kullanici Ekle</h2>
+              <button
+                onClick={() => setShowModal(false)}
+                className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {error && (
+              <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Ad *</label>
+                  <input
+                    type="text"
+                    required
+                    value={form.first_name}
+                    onChange={(e) => setForm({ ...form, first_name: e.target.value })}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Soyad *</label>
+                  <input
+                    type="text"
+                    required
+                    value={form.last_name}
+                    onChange={(e) => setForm({ ...form, last_name: e.target.value })}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Email *</label>
+                <input
+                  type="email"
+                  required
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Sifre *</label>
+                <input
+                  type="password"
+                  required
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Telefon</label>
+                <input
+                  type="text"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  placeholder="05XX XXX XX XX"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Roller *</label>
+                <div className="flex flex-wrap gap-2">
+                  {roles.map((role) => (
+                    <label
+                      key={role.id}
+                      className={`cursor-pointer rounded-lg border px-3 py-1.5 text-sm transition ${
+                        form.role_ids.includes(role.id)
+                          ? "border-primary-500 bg-primary-50 text-primary-700"
+                          : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        className="hidden"
+                        checked={form.role_ids.includes(role.id)}
+                        onChange={() => handleRoleToggle(role.id)}
+                      />
+                      {role.display_name}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Bayi Ofisi (opsiyonel)</label>
+                <select
+                  value={form.franchise_office_id ?? ""}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      franchise_office_id: e.target.value ? Number(e.target.value) : null,
+                    })
+                  }
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                >
+                  <option value="">Merkez (bayi yok)</option>
+                  {offices.map((office) => (
+                    <option key={office.id} value={office.id}>
+                      {office.name} ({office.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Iptal
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+                >
+                  {saving ? "Kaydediliyor..." : "Kullanici Ekle"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

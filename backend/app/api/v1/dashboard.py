@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select, and_
@@ -41,7 +41,7 @@ async def merkez_dashboard(
     sla = (await db.execute(
         select(func.count(CRMLead.id)).where(
             and_(
-                CRMLead.ilk_arama_deadline < datetime.now(timezone.utc),
+                CRMLead.ilk_arama_deadline < datetime.now(),
                 CRMLead.ilk_arama_yapildi_at.is_(None),
                 CRMLead.status == "talep_geldi",
             )
@@ -68,6 +68,25 @@ async def merkez_dashboard(
         )
     )).scalar() or 0
 
+    # Toplantiya donusum orani
+    toplanti_count = (await db.execute(
+        select(func.count(CRMLead.id)).where(
+            CRMLead.status.in_(["toplanti_planlandi", "toplanti_yapildi", "teklif_asamasi", "kapanis_basarili"])
+        )
+    )).scalar() or 0
+    donusum_orani = round((toplanti_count / total * 100), 1) if total > 0 else 0.0
+
+    # Aylik kapanis
+    aylik = (await db.execute(
+        select(func.count(CRMLead.id)).where(
+            and_(
+                CRMLead.status == "kapanis_basarili",
+                func.extract("month", CRMLead.closed_at) == today.month,
+                func.extract("year", CRMLead.closed_at) == today.year,
+            )
+        )
+    )).scalar() or 0
+
     return DashboardStats(
         toplam_lead=total,
         bugunun_leadleri=bugun,
@@ -75,6 +94,8 @@ async def merkez_dashboard(
         sla_ihlali=sla,
         bugunun_randevulari=randevular,
         bekleyen_raporlar=bekleyen_rapor,
+        toplantiya_donusum_orani=donusum_orani,
+        aylik_kapanis=aylik,
     )
 
 
